@@ -1,0 +1,11 @@
+{
+  "user_name": "User",
+  "preferred_browser": "chrome",
+  "app_aliases": {
+    "koding": "code",
+    "notepad": "notepad.exe",
+    "browser": "chrome",
+    "kalkulator": "calc.exe",
+    "paint": "mspaint.exe"
+  }
+}
