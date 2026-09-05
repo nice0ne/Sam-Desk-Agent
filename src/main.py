@@ -55,7 +55,12 @@ class SamDeskAgentApp:
 
         # UI components
         self.hud = FloatingHUD(on_stop_clicked=self.on_stop_clicked)
-        self.tray = SystemTrayApp(on_toggle_pause=self.on_toggle_pause, on_exit=self.stop)
+        self.tray = SystemTrayApp(
+            on_toggle_pause=self.on_toggle_pause,
+            on_exit=self.stop,
+            on_settings=self.open_settings_window,
+            on_view_memory=self.open_memory_window,
+        )
 
         # Hotkey listener
         hotkey_str = self.config.get("voice", {}).get("hotkey", "<alt>+space")
@@ -77,6 +82,36 @@ class SamDeskAgentApp:
         else:
             print("[Sam] Agent aktif kembali.")
             self.hud.update_state(HUDState.IDLE, "Sam Siap")
+
+    def open_settings_window(self):
+        print("[Sam] Membuka jendela Pengaturan...")
+        def _launch():
+            try:
+                from src.ui.settings_window import SettingsWindow
+                win = SettingsWindow(on_save_callback=self._on_settings_saved)
+                win.show()
+            except Exception as e:
+                print(f"[Error] Gagal membuka Pengaturan: {e}")
+
+        threading.Thread(target=_launch, daemon=True).start()
+
+    def _on_settings_saved(self, new_config: dict):
+        print("[Sam] Pengaturan baru berhasil disimpan dan diterapkan.")
+        self.config = new_config
+        if "voice" in new_config and "tts_voice" in new_config["voice"]:
+            self.tts.default_voice = new_config["voice"]["tts_voice"]
+
+    def open_memory_window(self):
+        print("[Sam] Membuka jendela Memori & Pembelajaran...")
+        def _launch():
+            try:
+                from src.ui.memory_window import MemoryViewerWindow
+                win = MemoryViewerWindow(db_manager=self.db, skill_store=self.skill_store)
+                win.show()
+            except Exception as e:
+                print(f"[Error] Gagal membuka Memori: {e}")
+
+        threading.Thread(target=_launch, daemon=True).start()
 
     def on_hotkey_pressed(self):
         if self.safety.is_cancelled():

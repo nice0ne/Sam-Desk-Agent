@@ -46,9 +46,13 @@ class SystemTrayApp:
         self,
         on_toggle_pause: Optional[Callable] = None,
         on_exit: Optional[Callable] = None,
+        on_settings: Optional[Callable] = None,
+        on_view_memory: Optional[Callable] = None,
     ):
         self.on_toggle_pause = on_toggle_pause
         self.on_exit = on_exit
+        self.on_settings = on_settings
+        self.on_view_memory = on_view_memory
         self.is_paused: bool = False
         self._running: bool = False
         self._icon_image = create_icon_image("green")
@@ -79,13 +83,27 @@ class SystemTrayApp:
             return None
         return Menu(
             MenuItem(self._get_toggle_label, self._on_tray_toggle_click),
-            MenuItem("Pengaturan", lambda icon, item: None),
-            MenuItem("Lihat Memori", lambda icon, item: None),
+            MenuItem("Pengaturan", self._on_tray_settings_click),
+            MenuItem("Lihat Memori", self._on_tray_memory_click),
             MenuItem("Keluar", self._on_tray_exit_click),
         )
 
     def _on_tray_toggle_click(self, icon=None, item=None) -> None:
         self.toggle_pause()
+
+    def _on_tray_settings_click(self, icon=None, item=None) -> None:
+        if callable(self.on_settings):
+            try:
+                self.on_settings()
+            except Exception as e:
+                logger.error("Error invoking on_settings: %s", e)
+
+    def _on_tray_memory_click(self, icon=None, item=None) -> None:
+        if callable(self.on_view_memory):
+            try:
+                self.on_view_memory()
+            except Exception as e:
+                logger.error("Error invoking on_view_memory: %s", e)
 
     def _on_tray_exit_click(self, icon=None, item=None) -> None:
         self.stop()

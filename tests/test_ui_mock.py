@@ -146,3 +146,49 @@ def test_system_tray_start_and_stop():
 
         tray.stop()
         mock_stop.assert_called_once()
+
+
+def test_system_tray_settings_and_memory_callbacks():
+    on_settings = MagicMock()
+    on_memory = MagicMock()
+    tray = SystemTrayApp(on_settings=on_settings, on_view_memory=on_memory)
+
+    tray._on_tray_settings_click()
+    on_settings.assert_called_once()
+
+    tray._on_tray_memory_click()
+    on_memory.assert_called_once()
+
+
+def test_settings_window_load_and_save(tmp_path):
+    from src.ui.settings_window import SettingsWindow
+    cfg_file = tmp_path / "test_config.yaml"
+    on_save = MagicMock()
+
+    win = SettingsWindow(on_save_callback=on_save)
+    win.config_path = cfg_file
+
+    data = win.load_config()
+    assert isinstance(data, dict)
+
+    save_result = win.save_config({"voice": {"hotkey": "<ctrl>+space"}})
+    assert save_result is True
+    assert cfg_file.exists()
+    on_save.assert_called_once_with({"voice": {"hotkey": "<ctrl>+space"}})
+
+
+def test_memory_viewer_window_data(tmp_path):
+    from src.ui.memory_window import MemoryViewerWindow
+    from src.memory.db import DatabaseManager
+    from src.memory.skill_store import SkillStore
+
+    db_path = str(tmp_path / "test_ui_memory.db")
+    db = DatabaseManager(db_path)
+    db.init_db()
+    store = SkillStore(db)
+    store.set_preference("theme", "dark")
+    store.save_skill("test skill", "description", [{"tool": "launch_app"}])
+
+    viewer = MemoryViewerWindow(db_manager=db, skill_store=store)
+    assert viewer.db_manager is not None
+    assert viewer.skill_store is not None
