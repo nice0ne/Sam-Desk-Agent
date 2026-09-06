@@ -140,3 +140,33 @@ def test_init_exports():
     assert hasattr(brain_pkg, "ToolRegistry")
     assert hasattr(brain_pkg, "AgentBrain")
     assert hasattr(brain_pkg, "SAM_SYSTEM_PROMPT")
+    assert hasattr(brain_pkg, "LLMClient")
+
+
+def test_agent_brain_process_command_with_llm():
+    mock_desktop = MagicMock()
+    mock_desktop.execute_action.return_value = {"status": "success"}
+
+    mock_llm = MagicMock()
+    planned_actions = [{"tool": "launch_application", "params": {"app_name": "calc"}}]
+    mock_llm.plan_actions.return_value = (planned_actions, "Membuka kalkulator.")
+
+    mock_store = MagicMock()
+    mock_store.find_skill.return_value = None  # Not in cache
+
+    brain = AgentBrain(desktop_controller=mock_desktop, skill_store=mock_store, llm_client=mock_llm)
+
+    res = brain.process_command("buka kalkulator dong")
+
+    assert res["matched"] is True
+    assert res["source"] == "llm_generation"
+    assert res["actions"] == planned_actions
+    assert len(res["results"]) == 1
+    assert res["response"] == "Membuka kalkulator."
+    mock_desktop.execute_action.assert_called_once_with("launch_application", {"app_name": "calc"})
+    mock_store.save_skill.assert_called_once_with(
+        "buka kalkulator dong",
+        "Generated via LLM planning",
+        planned_actions,
+    )
+

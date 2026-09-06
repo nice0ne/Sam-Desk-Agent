@@ -24,11 +24,17 @@ class MouseKeyboardController:
 
     def type_text(self, text: str, use_clipboard: bool = False) -> None:
         """Type text using keyboard simulation or clipboard paste for long text / special characters."""
-        if use_clipboard or len(text) > 40:
-            pyperclip.copy(text)
-            pyautogui.hotkey('ctrl', 'v')
-        else:
-            pyautogui.write(text, interval=0.01)
+        time.sleep(0.1)
+        old_failsafe = pyautogui.FAILSAFE
+        try:
+            pyautogui.FAILSAFE = False
+            if use_clipboard or len(text) > 40:
+                pyperclip.copy(text)
+                pyautogui.hotkey('ctrl', 'v')
+            else:
+                pyautogui.write(text, interval=0.01)
+        finally:
+            pyautogui.FAILSAFE = old_failsafe
 
     def hotkey(self, keys: List[str]) -> None:
         """Press a combination of keys simultaneously."""

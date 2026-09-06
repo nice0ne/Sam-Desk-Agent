@@ -5,16 +5,36 @@ from src.core.safety import SafetySupervisor
 logger = logging.getLogger(__name__)
 
 
+def normalize_hotkey_string(hotkey_str: str) -> str:
+    """Normalize a hotkey string to ensure special multi-character keys are bracketed for pynput.
+
+    Examples:
+        "<alt>+space" -> "<alt>+<space>"
+        "alt+space" -> "<alt>+<space>"
+        "<ctrl>+<shift>+s" -> "<ctrl>+<shift>+s"
+    """
+    if not hotkey_str:
+        return "<alt>+<space>"
+    parts = [p.strip().lower() for p in hotkey_str.split("+") if p.strip()]
+    norm_parts = []
+    for p in parts:
+        if len(p) > 1 and not (p.startswith("<") and p.endswith(">")):
+            norm_parts.append(f"<{p}>")
+        else:
+            norm_parts.append(p)
+    return "+".join(norm_parts)
+
+
 class GlobalHotkeyListener:
     def __init__(
         self,
         on_trigger: Callable[[], None],
         safety_supervisor: Optional[SafetySupervisor] = None,
-        hotkey_str: str = "<alt>+space"
+        hotkey_str: str = "<alt>+<space>"
     ):
         self.on_trigger = on_trigger
         self.safety = safety_supervisor
-        self.hotkey_str = hotkey_str
+        self.hotkey_str = normalize_hotkey_string(hotkey_str)
         self._hotkey_listener = None
         self._esc_listener = None
         self.is_running = False

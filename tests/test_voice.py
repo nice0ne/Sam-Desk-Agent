@@ -85,7 +85,7 @@ def test_stt_engine_empty_audio():
 
 
 def test_stt_engine_fallback_when_unavailable():
-    stt = STTEngine()
+    stt = STTEngine(provider="whisper")
     audio = np.zeros(1600, dtype=np.float32)
     # faster-whisper is not installed or raises ImportError
     with patch.dict("sys.modules", {"faster_whisper": None}):
@@ -114,7 +114,7 @@ def test_stt_engine_with_mock_model():
 
 
 def test_stt_engine_converts_dtype_and_handles_exception():
-    stt = STTEngine()
+    stt = STTEngine(provider="whisper")
     audio_int = np.zeros(100, dtype=np.int16)
 
     mock_model = MagicMock()
@@ -123,6 +123,50 @@ def test_stt_engine_converts_dtype_and_handles_exception():
 
     result = stt.transcribe(audio_int)
     assert result == ""
+
+
+def test_stt_engine_google_provider_success():
+    stt = STTEngine(provider="google", language="id-ID")
+    audio = np.ones(1600, dtype=np.float32) * 0.1
+
+    with patch("speech_recognition.Recognizer.recognize_google", return_value="halo sam buka chrome") as mock_rec:
+        result = stt.transcribe(audio)
+        assert result == "halo sam buka chrome"
+        mock_rec.assert_called_once()
+        # Verify language passed was id-ID
+        _, kwargs = mock_rec.call_args
+        assert kwargs.get("language") == "id-ID"
+
+
+def test_stt_engine_google_provider_unknown_value():
+    import speech_recognition as sr
+    stt = STTEngine(provider="google")
+    audio = np.ones(1600, dtype=np.float32) * 0.01
+
+    with patch("speech_recognition.Recognizer.recognize_google", side_effect=sr.UnknownValueError()):
+        result = stt.transcribe(audio)
+        assert result == ""
+
+
+def test_stt_engine_google_provider_request_error():
+    import speech_recognition as sr
+    stt = STTEngine(provider="google")
+    audio = np.ones(1600, dtype=np.float32) * 0.01
+
+    with patch("speech_recognition.Recognizer.recognize_google", side_effect=sr.RequestError("API unreachable")):
+        result = stt.transcribe(audio)
+        assert result == ""
+
+
+def test_stt_engine_whisper_fallback_to_google():
+    stt = STTEngine(provider="auto")
+    audio = np.ones(1600, dtype=np.float32) * 0.1
+
+    # When faster_whisper is unavailable, it should seamlessly transcribe via Google
+    with patch.dict("sys.modules", {"faster_whisper": None}), \
+         patch("speech_recognition.Recognizer.recognize_google", return_value="buka notepad"):
+        result = stt.transcribe(audio)
+        assert result == "buka notepad"
 
 
 # ============================================================================
@@ -206,6 +250,17 @@ def test_hotkey_listener_initialization():
     assert listener.safety == safety
     assert listener.hotkey_str == "<ctrl>+<shift>+s"
     assert listener.is_running is False
+
+
+def test_normalize_hotkey_string():
+    from src.voice.hotkey import normalize_hotkey_string
+    assert normalize_hotkey_string("<alt>+space") == "<alt>+<space>"
+    assert normalize_hotkey_string("alt+space") == "<alt>+<space>"
+    assert normalize_hotkey_string("<alt>+<space>") == "<alt>+<space>"
+    assert normalize_hotkey_string("ctrl+shift+a") == "<ctrl>+<shift>+a"
+    assert normalize_hotkey_string("<ctrl>+<alt>+k") == "<ctrl>+<alt>+k"
+    assert normalize_hotkey_string("") == "<alt>+<space>"
+
 
 
 def test_hotkey_listener_esc_panic_trigger():

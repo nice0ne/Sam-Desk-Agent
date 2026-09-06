@@ -192,3 +192,122 @@ def test_memory_viewer_window_data(tmp_path):
     viewer = MemoryViewerWindow(db_manager=db, skill_store=store)
     assert viewer.db_manager is not None
     assert viewer.skill_store is not None
+
+
+@pytest.fixture(scope="module")
+def shared_tk_root():
+    import tkinter as tk
+    from src.ui import setup_tcl_tk_env
+    setup_tcl_tk_env()
+    root = tk.Tk()
+    root.withdraw()
+    yield root
+    try:
+        root.destroy()
+    except Exception:
+        pass
+
+
+def test_floating_hud_with_master(shared_tk_root):
+    hud = FloatingHUD(master=shared_tk_root)
+    assert hud.is_visible is False
+    hud.show()
+    assert hud.is_visible is True
+    hud.update_state(HUDState.LISTENING, "Test with master")
+    assert hud.get_current_state() == (HUDState.LISTENING, "Test with master")
+    hud.destroy()
+
+
+def test_settings_window_with_master(shared_tk_root):
+    from src.ui.settings_window import SettingsWindow
+    win = SettingsWindow(master=shared_tk_root)
+    win.show()
+    assert win.root is not None
+    assert win.root.winfo_exists()
+    win.root.destroy()
+
+
+def test_settings_window_multi_provider_save(tmp_path):
+    from src.ui.settings_window import SettingsWindow
+    cfg_file = tmp_path / "test_config_provider.yaml"
+    on_save = MagicMock()
+
+    win = SettingsWindow(on_save_callback=on_save)
+    win.config_path = cfg_file
+    win.config_data = {
+        "brain": {
+            "provider": "glm",
+            "model": "glm-4-flash",
+            "base_url": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "my-glm-key",
+            "max_sub_actions": 10,
+        }
+    }
+    new_cfg = {
+        "brain": {
+            "provider": "deepseek",
+            "model": "deepseek-chat",
+            "base_url": "https://api.deepseek.com",
+            "api_key": "my-deepseek-key",
+            "max_sub_actions": 15,
+        }
+    }
+    assert win.save_config(new_cfg) is True
+    assert win.config_data["brain"]["provider"] == "deepseek"
+    assert win.config_data["brain"]["base_url"] == "https://api.deepseek.com"
+    on_save.assert_called_once_with(new_cfg)
+
+
+def test_settings_window_stt_provider_save(tmp_path):
+    from src.ui.settings_window import SettingsWindow
+    cfg_file = tmp_path / "test_config_stt.yaml"
+    on_save = MagicMock()
+
+    win = SettingsWindow(on_save_callback=on_save)
+    win.config_path = cfg_file
+    win.config_data = {
+        "voice": {
+            "hotkey": "<alt>+<space>",
+            "stt_provider": "whisper",
+            "stt_language": "en-US",
+            "stt_model": "base",
+            "tts_voice": "id-ID-ArdiNeural",
+        }
+    }
+    new_cfg = {
+        "voice": {
+            "hotkey": "<ctrl>+<space>",
+            "stt_provider": "google",
+            "stt_language": "id-ID",
+            "stt_model": "base",
+            "tts_voice": "id-ID-GadisNeural",
+        }
+    }
+    assert win.save_config(new_cfg) is True
+    assert win.config_data["voice"]["stt_provider"] == "google"
+    assert win.config_data["voice"]["stt_language"] == "id-ID"
+    on_save.assert_called_once_with(new_cfg)
+
+
+def test_settings_window_test_connection_action(shared_tk_root):
+    from src.ui.settings_window import SettingsWindow
+    win = SettingsWindow(master=shared_tk_root)
+    win.show()
+    assert hasattr(win, "btn_test")
+    assert hasattr(win, "lbl_test_status")
+
+    from src.brain.llm_client import LLMClient
+    with patch.object(LLMClient, "test_connection", return_value=(True, "Koneksi Berhasil (120ms)! Model 'glm-4-plus' aktif.")):
+        win._on_test_connection_click()
+        if hasattr(win, "_test_thread"):
+            win._test_thread.join(timeout=2.0)
+        for _ in range(30):
+            shared_tk_root.update()
+            if "Koneksi Berhasil" in win.lbl_test_status.cget("text"):
+                break
+            import time
+            time.sleep(0.02)
+        assert "Koneksi Berhasil" in win.lbl_test_status.cget("text")
+
+    win.root.destroy()
+

@@ -48,13 +48,32 @@ class SkillStore:
             if row:
                 return json.loads(row["steps_json"])
 
-            # 2. Substring match fallback (query contains intent_key or intent_key contains query)
+            # Conjunctions indicating multi-part/compound commands
+            conjunctions = [" dan ", " lalu ", " kemudian ", " serta ", " setelah itu ", " terus "]
+            is_compound_query = any(c in f" {normalized_query} " for c in conjunctions)
+            action_keywords = ["ketik", "tulis", "cari", "hitung", "putar", "baca"]
+
+            # 2. Substring match fallback
             cursor.execute(
-                "SELECT steps_json FROM skills WHERE (? LIKE '%' || intent_key || '%') OR (intent_key LIKE '%' || ? || '%') "
-                "ORDER BY LENGTH(intent_key) DESC LIMIT 1",
+                "SELECT intent_key, steps_json FROM skills WHERE (? LIKE '%' || intent_key || '%') OR (intent_key LIKE '%' || ? || '%') "
+                "ORDER BY LENGTH(intent_key) DESC",
                 (normalized_query, normalized_query)
             )
-            row = cursor.fetchone()
-            if row:
-                return json.loads(row["steps_json"])
+            rows = cursor.fetchall()
+            for r in rows:
+                k = r["intent_key"]
+                # If the query is a compound sentence (e.g. "buka notepad dan ketik halo")
+                # but the cached skill intent_key is NOT compound (e.g. "buka notepad"),
+                # do not hijack the multi-action request with a partial single-action skill.
+                if is_compound_query and not any(c in f" {k} " for c in conjunctions):
+                    continue
+
+                # If query explicitly specifies an action verb that is absent from the cached intent, skip it
+                query_actions = [ak for ak in action_keywords if ak in normalized_query]
+                key_actions = [ak for ak in action_keywords if ak in k]
+                if query_actions and not any(ak in key_actions for ak in query_actions):
+                    continue
+
+                return json.loads(r["steps_json"])
+
             return None

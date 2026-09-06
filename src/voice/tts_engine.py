@@ -31,18 +31,30 @@ class TTSEngine:
             await communicate.save(temp_path)
 
             # Play audio file via Windows PowerShell / Media Player
+            uri = "file:///" + temp_path.replace("\\", "/")
             try:
                 cmd = (
-                    f"Add-Type -AssemblyName presentationCore; "
-                    f"$p = New-Object System.Windows.Media.MediaPlayer; "
-                    f"$p.Open([System.Uri]'{temp_path}'); "
-                    f"$p.Play(); "
-                    f"Start-Sleep -Milliseconds 500"
+                    "Add-Type -AssemblyName presentationCore; "
+                    "$p = New-Object System.Windows.Media.MediaPlayer; "
+                    f"$p.Open([System.Uri]'{uri}'); "
+                    "$p.Play(); "
+                    "$t = 0; "
+                    "while ((-not $p.NaturalDuration.HasTimeSpan) -and ($t -lt 50)) { "
+                    "  Start-Sleep -Milliseconds 100; "
+                    "  $t++; "
+                    "}; "
+                    "if ($p.NaturalDuration.HasTimeSpan) { "
+                    "  $ms = [int]($p.NaturalDuration.TimeSpan.TotalMilliseconds); "
+                    "  Start-Sleep -Milliseconds ($ms + 300); "
+                    "} else { "
+                    "  Start-Sleep -Seconds 3; "
+                    "}; "
+                    "$p.Close();"
                 )
                 subprocess.run(
                     ["powershell", "-NoProfile", "-c", cmd],
                     capture_output=True,
-                    timeout=15,
+                    timeout=30,
                 )
             except Exception as play_err:
                 logger.warning(f"Audio playback error: {play_err}")

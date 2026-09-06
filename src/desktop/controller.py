@@ -78,6 +78,10 @@ class DesktopActionController:
                 res = self.uia_ctrl.click_element_by_name(name)
                 return {"status": "success" if res else "not_found", "clicked": res}
 
+            elif tool_name in ("speak_feedback", "speak"):
+                msg = params.get("message") or params.get("text") or ""
+                return {"status": "success", "message": msg}
+
             else:
                 return {"status": "error", "message": f"Unknown tool: {tool_name}"}
 

@@ -53,6 +53,23 @@ class ToolRegistry:
             {
                 "type": "function",
                 "function": {
+                    "name": "focus_window",
+                    "description": "Membawa jendela aplikasi ke latar depan (foreground) dan memfokuskan keyboard.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "title_pattern": {
+                                "type": "string",
+                                "description": "Nama aplikasi atau kata kunci judul jendela, misal 'notepad', 'explorer', 'chrome'",
+                            },
+                        },
+                        "required": ["title_pattern"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "adjust_system_volume",
                     "description": "Menaikkan, menurunkan, atau mengatur volume suara master Windows.",
                     "parameters": {

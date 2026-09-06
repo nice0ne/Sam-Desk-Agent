@@ -93,3 +93,36 @@ def test_adjust_volume_fallback():
 
     vol_delta = controller.adjust_volume(delta=0.1)
     assert vol_delta == 0.6
+
+
+def test_focus_window_alias_and_process_match():
+    controller = OSController()
+    mock_windows = [
+        {"hwnd": 501, "title": "Windows (C:) - File Explorer", "proc_name": "explorer.exe", "class_name": "CabinetWClass"},
+        {"hwnd": 502, "title": "", "proc_name": "notepad.exe", "class_name": "Notepad"},
+    ]
+    with patch.object(controller, "get_open_windows", return_value=mock_windows):
+        with patch.object(controller, "force_foreground_window", return_value=True) as mock_force:
+            # Match explorer by alias/class/proc
+            assert controller.focus_window("explorer") is True
+            mock_force.assert_called_with(501)
+
+            # Match notepad by proc name
+            assert controller.focus_window("notepad") is True
+            mock_force.assert_called_with(502)
+
+
+def test_launch_app_with_auto_focus():
+    controller = OSController()
+    with patch("subprocess.Popen") as mock_popen:
+        mock_proc = MagicMock()
+        mock_proc.pid = 9999
+        mock_popen.return_value = mock_proc
+
+        with patch.object(controller, "focus_window", return_value=True) as mock_focus:
+            res = controller.launch_app("notepad", auto_focus=True)
+            assert res["status"] == "success"
+            assert res["pid"] == 9999
+            assert res["focused"] is True
+            mock_focus.assert_called_once_with("notepad")
+

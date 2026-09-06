@@ -207,37 +207,37 @@ class MemoryViewerWindow:
     def _on_delete_skill(self) -> None:
         selected = self.skill_tree.selection()
         if not selected:
-            messagebox.showwarning("Peringatan", "Pilih resep yang ingin dihapus terlebih dahulu.")
+            messagebox.showwarning("Peringatan", "Pilih resep yang ingin dihapus terlebih dahulu.", parent=self.root)
             return
         item_id = selected[0]
         skill_db_id = self.skill_tree.item(item_id, "values")[0]
 
-        if messagebox.askyesno("Konfirmasi", f"Yakin ingin menghapus resep ID {skill_db_id}?"):
+        if messagebox.askyesno("Konfirmasi", f"Yakin ingin menghapus resep ID {skill_db_id}?", parent=self.root):
             try:
                 with self.db_manager.get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute("DELETE FROM skills WHERE id = ?", (skill_db_id,))
                     conn.commit()
                 self.refresh_skills()
-                messagebox.showinfo("Sukses", "Resep berhasil dihapus.")
+                messagebox.showinfo("Sukses", "Resep berhasil dihapus.", parent=self.root)
             except Exception as e:
-                messagebox.showerror("Error", f"Gagal menghapus resep: {e}")
+                messagebox.showerror("Error", f"Gagal menghapus resep: {e}", parent=self.root)
 
     def _on_delete_pref(self) -> None:
         selected = self.pref_tree.selection()
         if not selected:
-            messagebox.showwarning("Peringatan", "Pilih preferensi yang ingin dihapus terlebih dahulu.")
+            messagebox.showwarning("Peringatan", "Pilih preferensi yang ingin dihapus terlebih dahulu.", parent=self.root)
             return
         item_id = selected[0]
         pref_key = self.pref_tree.item(item_id, "values")[0]
 
-        if messagebox.askyesno("Konfirmasi", f"Yakin ingin menghapus preferensi '{pref_key}'?"):
+        if messagebox.askyesno("Konfirmasi", f"Yakin ingin menghapus preferensi '{pref_key}'?", parent=self.root):
             try:
                 with self.db_manager.get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute("DELETE FROM preferences WHERE key = ?", (pref_key,))
                     conn.commit()
                 self.refresh_preferences()
-                messagebox.showinfo("Sukses", "Preferensi berhasil dihapus.")
+                messagebox.showinfo("Sukses", "Preferensi berhasil dihapus.", parent=self.root)
             except Exception as e:
-                messagebox.showerror("Error", f"Gagal menghapus preferensi: {e}")
+                messagebox.showerror("Error", f"Gagal menghapus preferensi: {e}", parent=self.root)
